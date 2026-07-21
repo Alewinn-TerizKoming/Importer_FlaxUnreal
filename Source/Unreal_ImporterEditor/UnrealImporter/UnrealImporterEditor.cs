@@ -15,7 +15,7 @@ namespace Unreal_ImporterEditor;
 public class UnrealImporterEditor : EditorPlugin
 {
     private ToolStripButton _button;
-    private ToolStripButton _TestButton;
+    // private ToolStripButton _TestButton;
     private FlaxUnrealImporter importer;
 
     //private FlaxUnrealImporter _unrealImporter;
@@ -27,11 +27,11 @@ public class UnrealImporterEditor : EditorPlugin
         importer = new FlaxUnrealImporter();
 
         _button = Editor.UI.ToolStrip.AddButton("Import Unreal");
-        _TestButton = Editor.UI.ToolStrip.AddButton("Create Material");
+        // _TestButton = Editor.UI.ToolStrip.AddButton("Create Material");
 
         importer.ImportCompleted += OnImportCompleted;
         _button.Clicked += OnImportClicked;
-        _TestButton.Clicked += OnTestClicked;
+        //_TestButton.Clicked += OnTestClicked;
     }
 
     public override void DeinitializeEditor()
@@ -43,12 +43,12 @@ public class UnrealImporterEditor : EditorPlugin
             _button = null;
         }
 
-        if (_TestButton != null)
-        {
-            _TestButton.Dispose();
-            _TestButton.Clicked -= OnTestClicked;
-            _TestButton = null;
-        }
+        //if (_TestButton != null)
+        //{
+        //    _TestButton.Dispose();
+        //    _TestButton.Clicked -= OnTestClicked;
+        //    _TestButton = null;
+        //}
 
         importer.ImportCompleted -= OnImportCompleted;
         base.DeinitializeEditor();

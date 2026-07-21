@@ -28,3 +28,15 @@ obj/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Flax generated code
+*.Gen.cpp
+*.Gen.cs
+*.Gen.h
+
+# Visual Studio generated projects
+*.csproj
+
+# Visual Studio local settings
+Properties/launchSettings.json
+launchSettings.json
