@@ -1,0 +1,30 @@
+# Flax Engine
+# Generated folders
+Cache/
+Logs/
+Output/
+Binaries/
+
+# C# / .NET
+bin/
+obj/
+
+*.user
+*.suo
+
+# IDE
+.vs/
+.vscode/
+.idea/
+
+*.sln.docstates
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
