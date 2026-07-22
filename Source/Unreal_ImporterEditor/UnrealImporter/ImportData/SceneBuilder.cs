@@ -9,14 +9,6 @@ namespace Unreal_ImporterEditor;
 
 public class SceneBuilder
 {
-    private static readonly Matrix UnrealToFlaxMatrix = new Matrix(
-                                                                0, 1, 0, 0,
-                                                                0, 0, 1, 0,
-                                                               -1, 0, 0, 0,
-                                                                0, 0, 0, 1
-                                                            );
-    private static readonly Quaternion UnrealToFlaxRotation = Quaternion.RotationMatrix(UnrealToFlaxMatrix);
-
     public async Task Build(AssetImportResult assets)
     {
         Dictionary<string, EmptyActor> folders = new();
@@ -117,23 +109,20 @@ public class SceneBuilder
 
     private void ApplyTransform(Actor actor, Vector3 unrealPosition, Rotation unrealEuler, Vector3 unrealScale)
     {
+        actor.ResetLocalTransform();
+
         actor.LocalPosition = new FlaxEngine.Vector3(
             unrealPosition.Y,
             unrealPosition.Z,
             unrealPosition.X
         );
 
-        Quaternion unrealRotation =
-            Quaternion.Euler(
-                unrealEuler.Yaw,
-                unrealEuler.Pitch,
-                unrealEuler.Roll
-            );
+        Rotation FlaxRotation = new Rotation();
+        FlaxRotation.Pitch = -unrealEuler.Pitch;
+        FlaxRotation.Roll = unrealEuler.Yaw; 
+        FlaxRotation.Yaw = -unrealEuler.Roll; 
 
-        actor.LocalOrientation =
-            Quaternion.Invert(UnrealToFlaxRotation) *
-            unrealRotation *
-            UnrealToFlaxRotation;
+        actor.Orientation =  Quaternion.Euler(FlaxRotation.Pitch,FlaxRotation.Roll,FlaxRotation.Yaw);
 
         actor.LocalScale = new FlaxEngine.Vector3(
                 unrealScale.Y,
