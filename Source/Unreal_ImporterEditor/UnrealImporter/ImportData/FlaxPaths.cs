@@ -16,8 +16,7 @@ public static class FlaxPaths
 
     public static string NormalizeImportPath(string path)
     {
-        return Path.GetFullPath(path)
-            .Replace('\\', '/');
+        return Path.GetFullPath(path).Replace('\\', '/');
     }
 
     public static bool PathsEqual(string a, string b)
@@ -62,9 +61,7 @@ public static class FlaxPaths
     }
 
 
-    public static string GetCollisionMeshPath(
-        string sceneName,
-        string meshName)
+    public static string GetCollisionMeshPath(string sceneName,string meshName)
     {
         return Path.Combine(
             GetSceneFolder(sceneName),
@@ -73,9 +70,7 @@ public static class FlaxPaths
     }
 
 
-    public static string GetCollisionDataPath(
-        string sceneName,
-        string meshName)
+    public static string GetCollisionDataPath(string sceneName,string meshName)
     {
         return Path.Combine(
             GetSceneFolder(sceneName),
@@ -84,9 +79,7 @@ public static class FlaxPaths
     }
 
 
-    public static string GetPrefabPath(
-        string sceneName,
-        string meshName)
+    public static string GetPrefabPath(string sceneName,string meshName)
     {
         return Path.Combine(
             GetSceneFolder(sceneName),
@@ -111,12 +104,6 @@ public static class FlaxPaths
         {
             throw new Exception( $"Unsupported Unreal asset path : {unrealAssetPath}");
         }
-
-        // Unreal donne :
-        // SM_Cube.SM_Cube
-        //
-        // On garde uniquement :
-        // SM_Cube
 
         int dot = relative.LastIndexOf('.');
 

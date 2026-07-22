@@ -30,11 +30,7 @@ public class SceneBuilder
         foreach (MeshInstance instance in assets.scene.MeshInstances)
         {
             StaticMesh mesh = assets.scene.StaticMeshes[instance.Mesh];
-
             Actor actor;
-
-            Debug.Log($"Instance name => {instance.Name}");
-            Debug.Log($"Mesh name => {mesh.Name}");
 
             if (assets.HasPrefab(mesh.Name))
             {
@@ -50,8 +46,7 @@ public class SceneBuilder
                     staticModel = actor.GetChild<StaticModel>();
                 }
 
-                if (staticModel == null)
-                    Debug.LogError("==========> Can't find mesh in prefab...");
+                if (staticModel == null) Debug.LogError("==========> Can't find mesh in prefab...");
 
                 actor = staticModel;
             }
@@ -105,7 +100,7 @@ public class SceneBuilder
 
         File.WriteAllBytes(scenePath, bytes);
 
-        Debug.Log("Scene written.");
+        Debug.Log("Import end / Scene written.");
 
         FlaxEngine.Object.Destroy(scene);       // <= Avoid spamming log with already registered assets from the in-memory scene
 
@@ -145,24 +140,18 @@ public class SceneBuilder
         ApplyShadowProperties(actor, properties);
     }
 
-    private void ApplyShadowProperties(
-        Actor actor,
-        ActorProperties properties)
+    private void ApplyShadowProperties( Actor actor, ActorProperties properties)
     {
-        if (properties.CastShadow)
-            return;
+        if (properties.CastShadow) return;
 
         StaticModel staticModel = actor as StaticModel;
 
-        if (staticModel == null)
-            return;
+        if (staticModel == null) return;
 
         for (int i = 0; i < staticModel.MaterialSlots.Length; i++)
         {
             FlaxEngine.MaterialSlot slot = staticModel.MaterialSlots[i];
-
             slot.ShadowsMode = ShadowsCastingMode.None;
-
             staticModel.MaterialSlots[i] = slot;
         }
     }
@@ -172,13 +161,8 @@ public class SceneBuilder
     FlaxEngine.Scene scene,
     Dictionary<string, EmptyActor> folders)
     {
-        if (string.IsNullOrEmpty(folderPath))
-            return null;
-
-        if (folders.TryGetValue(folderPath, out EmptyActor existing))
-            return existing;
-
-
+        if (string.IsNullOrEmpty(folderPath)) return null;
+        if (folders.TryGetValue(folderPath, out EmptyActor existing)) return existing;
         string[] parts = folderPath.Split('/');
 
         string currentPath = "";
@@ -186,14 +170,9 @@ public class SceneBuilder
 
         foreach (string part in parts)
         {
-            if (string.IsNullOrEmpty(part))
-                continue;
-
-            if (!string.IsNullOrEmpty(currentPath))
-                currentPath += "/";
-
+            if (string.IsNullOrEmpty(part)) continue;
+            if (!string.IsNullOrEmpty(currentPath)) currentPath += "/";
             currentPath += part;
-
 
             if (!folders.TryGetValue(currentPath, out EmptyActor folder))
             {
@@ -255,8 +234,6 @@ public class SceneBuilder
             MaterialSlot slot = assets.scene.Materials[materialIndex];
 
             string materialPath = assets.GetMaterial(slot.AssetPath);
-            Debug.Log($"=========> Material path : {materialPath}");
-
             MaterialBase material = Content.Load<MaterialBase>(materialPath);
             material.WaitForLoaded();
 
@@ -267,9 +244,6 @@ public class SceneBuilder
             }
 
             staticModel.SetMaterial(i, material);
-
-            Debug.Log(
-                $"+++++++++++==> Override material slot {i} with {slot.Name} at {staticModel.MaterialSlots[i].Material.Path}");
         }
     }
 }

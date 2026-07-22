@@ -29,9 +29,6 @@ void MatGraphTools::SetColor(Material* material, Color color)
 void MatGraphTools::ModifyMaterialGraph(Material* material, Color color)
 {
     BytesContainer data = material->LoadSurface(true);
-
-    LOG(Warning, "Original surface size: {0}", data.Length());
-
     MemoryReadStream readStream(data.Get(), data.Length());
 
     MaterialGraph graph;
@@ -42,8 +39,6 @@ void MatGraphTools::ModifyMaterialGraph(Material* material, Color color)
         return;
     }
 
-    LOG(Warning, "Nodes before: {0}", graph.Nodes.Count());
-
     // Create parameter
     auto& param = graph.Parameters.AddOne();
 
@@ -52,8 +47,6 @@ void MatGraphTools::ModifyMaterialGraph(Material* material, Color color)
     param.Type = VariantType::Color;
     param.Value = color;
     param.IsPublic = true;
-
-    LOG(Warning, "Added parameter ID={0}", param.Identifier);
 
     // Create Parameter Get node
     auto& paramNode = graph.Nodes.AddOne();
@@ -71,9 +64,6 @@ void MatGraphTools::ModifyMaterialGraph(Material* material, Color color)
     paramNode.Boxes[0] = ShaderGraphBox(&paramNode, 0, VariantType::Color);
     paramNode.Boxes[1] = ShaderGraphBox(&paramNode, 1, VariantType::Color);
 
-    LOG(Warning, "Added parameter node ID={0} Type={1}", paramNode.ID, paramNode.Type);
-
-
     // Create connection Parameter -> Root
     auto& rootNode = graph.Nodes[0];
 
@@ -82,9 +72,6 @@ void MatGraphTools::ModifyMaterialGraph(Material* material, Color color)
 
     parameterOutput.Connections.Add(&rootInput);
     rootInput.Connections.Add(&parameterOutput);
-
-    LOG(Warning, "Connected parameter node to root");
-
 
     // Serialize
     MemoryWriteStream writeStream(512);
@@ -97,8 +84,6 @@ void MatGraphTools::ModifyMaterialGraph(Material* material, Color color)
 
     BytesContainer newData;
     newData.Copy(Span<byte>((byte*)writeStream.GetHandle(), writeStream.GetPosition()));
-
-    LOG(Warning, "New surface size: {0}", newData.Length());
 
     MaterialInfo info = material->GetInfo();
     info.ShadingModel = MaterialShadingModel::Lit;
@@ -124,5 +109,4 @@ void MatGraphTools::ModifyMaterialGraph(Material* material, Color color)
 
     // Sauvegarde finale
     material->Save(material->GetPath());
-
 }

@@ -33,19 +33,14 @@ public class FlaxUnrealImporter
             return;
 
         string sceneFilename = files[0];
-
         Debug.Log($"Importing scene : {sceneFilename}");
 
         _sceneReader = new SceneReader();
-
         Scene scene = _sceneReader.Read(sceneFilename);
-
         _assetImporter = new AssetImporter();
 
         AssetImportResult result = await _assetImporter.ImportAsync(scene, sceneFilename);
 
         ImportCompleted?.Invoke(result);
-        //_sceneBuilder = new SceneBuilder();
-        //await _sceneBuilder.Build(scene, assets);
     }
 }

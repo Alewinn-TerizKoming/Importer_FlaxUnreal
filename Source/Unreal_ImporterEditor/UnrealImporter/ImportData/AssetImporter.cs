@@ -46,9 +46,6 @@ public class AssetImporter
 
         if (!Directory.Exists(directory)) Directory.CreateDirectory(directory);
 
-        Debug.Log($"Import FBX : {sourceFilename}");
-        Debug.Log($"Destination : {destinationFilename}");
-
         ModelTool.Options options = new ModelTool.Options();
 
         options.Scale = 1;
@@ -106,10 +103,7 @@ public class AssetImporter
 
         foreach (var collisionFile in collisionFiles)
         {
-            Debug.Log($"Cooking collision : {collisionFile}");
-
             Model Model = Content.LoadAsync<Model>(collisionFile);
-            //Model.WaitForLoaded();
             while (!Model.IsLoaded)
                 await Task.Delay(10);
 
@@ -193,20 +187,15 @@ public class AssetImporter
 
     private async Task GenerateMaterialsAsync(Scene scene, AssetImportResult result)
     {
-        Debug.Log($"Generating {scene.Materials.Count} materials");
-
         foreach (MaterialSlot slot in scene.Materials)
         {
             string flaxPath = await _materialGenerator.GenerateAsync(slot);
             result.RegisterMaterial(slot.AssetPath, flaxPath);
-
         }
     }
 
     private async Task ApplyDefaultMaterialsAsync(StaticMesh mesh,string modelPath,Scene scene)
     {
-        Debug.Log($"========== ApplyDefaultMaterialsAsync : {mesh.Name}");
-
         Model model = Content.Load<Model>(modelPath);
 
         if (model == null)
@@ -239,7 +228,6 @@ public class AssetImporter
             if (i < model.MaterialSlots.Length)
             {
                 model.MaterialSlots[i].Material = material;
-                Debug.Log( $"=============> Assign material {material.ID} to slot {i} of {model.TypeName}");
             }
         }
 
@@ -248,8 +236,6 @@ public class AssetImporter
         Model test = Content.Load<Model>(modelPath);
 
         while (!test.IsLoaded) await Task.Delay(10);
-
-        Debug.Log($"Reloaded model has {test.MaterialSlots.Length} slots");
 
         for (int i = 0; i < test.MaterialSlots.Length; i++)
         {

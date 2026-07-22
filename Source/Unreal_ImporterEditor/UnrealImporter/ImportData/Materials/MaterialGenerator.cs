@@ -66,7 +66,6 @@ public class MaterialGenerator
         instance.BaseMaterial = parent;
         instance.SetParameterValue("BaseColor", ParseColor(color));
 
-        Debug.Log($"MI =======> Parent {slot.Name} => {parentPath} type={parent.GetType().Name}");
         instance.Save();
     }
 
