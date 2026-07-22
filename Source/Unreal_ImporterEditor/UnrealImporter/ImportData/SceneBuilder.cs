@@ -73,10 +73,15 @@ public class SceneBuilder
 
             ApplyTransform(actor, instance.Location, instance.Rotation, instance.Scale);
 
+            // TODO:
+            // Unreal "Unlit" materials currently import as standard Flax materials.
+            // This causes SkySphere materials to cast shadows.
+            // Investigate a proper mapping between Unreal Unlit and Flax material/shadow settings.
             ApplyProperties(actor, instance.Properties);
-
             ApplyMaterials(actor, instance, assets);
         }
+
+
         DirectionalLight light = scene.AddChild<DirectionalLight>();
         light.EulerAngles = new Float3(65, -100, 0);
 
