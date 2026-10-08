@@ -42,50 +42,83 @@ public static class FlaxPaths
             .Replace('\\', '/');
     }
 
-    public static string GetSceneFolder(string sceneName)
+    //[Obsolete]
+    //public static string GetSceneFolder(string sceneName)
+    //{
+    //    return Path.Combine(
+    //        Globals.ProjectFolder,
+    //        "Content",
+    //        "Scenes",
+    //        sceneName);
+    //}
+
+    public static string GetImportFolder(string source, string sceneName)
     {
         return Path.Combine(
             Globals.ProjectFolder,
             "Content",
-            "Scenes",
+            source,
             sceneName);
     }
 
-
-    public static string GetMeshPath(string sceneName,string meshName)
+    public static string GetMeshPath(
+        string source,
+        string sceneName,
+        string meshName)
     {
         return Path.Combine(
-            GetSceneFolder(sceneName),
+            GetImportFolder(source, sceneName),
             "Meshes",
             meshName + ".flax");
     }
 
-
-    public static string GetCollisionMeshPath(string sceneName,string meshName)
+    public static string GetCollisionMeshPath(
+        string source,
+        string sceneName,
+        string meshName)
     {
         return Path.Combine(
-            GetSceneFolder(sceneName),
+            GetImportFolder(source, sceneName),
             "Collisions",
             meshName + ".flax");
     }
 
-
-    public static string GetCollisionDataPath(string sceneName,string meshName)
+    public static string GetCollisionDataPath(
+        string source,
+        string sceneName,
+        string meshName)
     {
         return Path.Combine(
-            GetSceneFolder(sceneName),
+            GetImportFolder(source, sceneName),
             "Collisions",
             meshName + "_ColData.flax");
     }
 
-
-    public static string GetPrefabPath(string sceneName,string meshName)
+    public static string GetPrefabPath(
+        string source,
+        string sceneName,
+        string meshName)
     {
         return Path.Combine(
-            GetSceneFolder(sceneName),
+            GetImportFolder(source, sceneName),
+            "Prefabs",
             meshName + ".prefab");
     }
 
+    public static string GetMaterialPath(
+        string source,
+        string sceneName,
+        string materialName)
+    {
+        return Path.Combine(
+            GetImportFolder(source, sceneName),
+            "Materials",
+            materialName + ".flax");
+    }
+
+    // ----------------------------------------------
+    // --------- Unreal Specific --------------------
+    // ----------------------------------------------
     public static string GetUnrealAssetPath(string unrealAssetPath,string extension)
     {
         string relative;
@@ -102,7 +135,8 @@ public static class FlaxPaths
         }
         else
         {
-            throw new Exception( $"Unsupported Unreal asset path : {unrealAssetPath}");
+            Debug.LogWarning($"Unknown asset path '{unrealAssetPath}'. " + "Treating it as an external source asset.");
+            relative = Path.Combine("_UnknownSourceAssets_", unrealAssetPath);
         }
 
         int dot = relative.LastIndexOf('.');

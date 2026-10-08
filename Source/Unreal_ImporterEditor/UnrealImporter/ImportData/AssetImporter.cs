@@ -24,13 +24,15 @@ public class AssetImporter
 
         AssetImportResult result = new(sceneName, scene);
 
+        ModelTool.Options options = CreateImportOptions(scene.From);
+
         await GenerateMaterialsAsync(scene, result);
 
         foreach (StaticMesh mesh in scene.StaticMeshes)
         {
             string sourceFilename = Path.Combine(sceneDirectory, mesh.Name + ".fbx");
 
-            await ImportModelAsync(sourceFilename,mesh,result);
+            await ImportModelAsync(sourceFilename,mesh,result,options);
         }
 
         await GeneratePrefabsAsync(scene, result);
@@ -38,20 +40,58 @@ public class AssetImporter
         return result;
     }
 
-    private async Task ImportModelAsync(string sourceFilename,StaticMesh mesh,AssetImportResult result)
+    private ModelTool.Options CreateImportOptions(string from)
     {
-        string destinationFilename = FlaxPaths.GetUnrealMeshPath(mesh.AssetPath);
+        ModelTool.Options options = new();
+
+        options.Scale = 1;
+        options.ImportVertexColors = true;
+        options.SplitObjects = true;
+        options.CollisionType = CollisionDataType.ConvexMesh;
+
+        switch (from)
+        {
+            case "Blender":
+                options.UseLocalOrigin = true;
+                options.Rotation = Quaternion.Euler(0, -90, 0);
+                break;
+
+            case "Unreal":
+                break;
+
+            default:
+                Debug.LogWarning(
+                    $"Unknown scene source '{from}'. " +
+                    "Using default import options.");
+                break;
+        }
+
+        return options;
+    }
+
+    private async Task ImportModelAsync(
+        string sourceFilename,
+        StaticMesh mesh,
+        AssetImportResult result,
+        ModelTool.Options options)
+    {
+        //string destinationFilename = FlaxPaths.GetUnrealMeshPath(mesh.AssetPath);
+
+        string destinationFilename = FlaxPaths.GetMeshPath(
+            result.scene.From,
+            result.scene.SceneName,
+            mesh.Name);
 
         string directory = Path.GetDirectoryName(destinationFilename)!;
 
         if (!Directory.Exists(directory)) Directory.CreateDirectory(directory);
 
-        ModelTool.Options options = new ModelTool.Options();
+        //ModelTool.Options options = new ModelTool.Options();
 
-        options.Scale = 1;
-        options.CollisionType = CollisionDataType.ConvexMesh;
-        options.ImportVertexColors = true;
-        options.SplitObjects = true;
+        //options.Scale = 1;
+        //options.CollisionType = CollisionDataType.ConvexMesh;
+        //options.ImportVertexColors = true;
+        //options.SplitObjects = true;
 
         bool failed =
             Editor.Import(
@@ -71,12 +111,40 @@ public class AssetImporter
 
         result.RegisterMesh(mesh.Name,destinationFilename);
 
-        await ApplyDefaultMaterialsAsync(mesh, destinationFilename, result.scene);
+        await ApplyDefaultMaterialsAsync(mesh, destinationFilename, result.scene, result);
 
         await ProcessCollisionsAsync(Path.GetDirectoryName(sourceFilename)!,mesh,destinationFilename,result);
     }
 
-    private async Task ProcessCollisionsAsync(string sceneDirectory, StaticMesh mesh, string visualAssetPath, AssetImportResult result)
+    private async Task ProcessCollisionsAsync(string sceneDirectory,StaticMesh mesh,string visualAssetPath,AssetImportResult result)
+    {
+        switch (result.scene.From)
+        {
+            case "Unreal":
+                await ProcessUnrealCollisionAsync(
+                    sceneDirectory,
+                    mesh,
+                    visualAssetPath,
+                    result);
+                break;
+
+            case "Blender":
+                await ProcessBlenderCollisionAsync(
+                    sceneDirectory,
+                    mesh,
+                    visualAssetPath,
+                    result);
+                break;
+
+            default:
+                Debug.LogWarning(
+                    $"Unknown scene source '{result.scene.From}'. " +
+                    $"No collision processing performed.");
+                break;
+        }
+    }
+
+    private async Task ProcessUnrealCollisionAsync(string sceneDirectory, StaticMesh mesh, string visualAssetPath, AssetImportResult result)
     {
         string meshName =  mesh.Name;
 
@@ -135,6 +203,96 @@ public class AssetImporter
         }
     }
 
+    private async Task ProcessBlenderCollisionAsync(
+    string sceneDirectory,
+    StaticMesh mesh,
+    string visualAssetPath,
+    AssetImportResult result)
+    {
+        string collisionSourceFilename = Path.Combine(
+            sceneDirectory,
+            mesh.Name + "_COL.fbx");
+
+        if (!File.Exists(collisionSourceFilename))
+            return;
+
+        string collisionFolder = Path.Combine(
+            Path.GetDirectoryName(visualAssetPath)!,
+            "..",
+            "Collisions");
+
+        collisionFolder = Path.GetFullPath(collisionFolder);
+
+        if (!Directory.Exists(collisionFolder))
+            Directory.CreateDirectory(collisionFolder);
+
+        string collisionDestinationFilename = Path.Combine(
+            collisionFolder,
+            mesh.Name + "_COL.flax");
+
+        ModelTool.Options options = new();
+        options.Scale = 1;
+        options.UseLocalOrigin = true;
+        options.Rotation = Quaternion.Euler(0, -90, 0);
+        options.ImportVertexColors = false;
+        options.SplitObjects = true;
+        options.CollisionType = CollisionDataType.ConvexMesh;
+
+        bool failed = Editor.Import(
+            FlaxPaths.NormalizeImportPath(collisionSourceFilename),
+            FlaxPaths.NormalizeImportPath(collisionDestinationFilename),
+            options);
+
+        await Task.Delay(200);
+
+        if (failed)
+        {
+            Debug.LogError(
+                $"Unable to import Blender collision {collisionSourceFilename}");
+            return;
+        }
+
+        Model collisionModel =
+            Content.LoadAsync<Model>(collisionDestinationFilename);
+
+        while (!collisionModel.IsLoaded)
+            await Task.Delay(10);
+
+        await Task.Delay(50);
+
+        if (collisionModel == null)
+        {
+            Debug.LogError(
+                $"Unable to load collision model {collisionDestinationFilename}");
+            return;
+        }
+
+        string collisionDataPath = Path.Combine(
+            collisionFolder,
+            mesh.Name + "_COL_ColData.flax");
+
+        failed = Editor.CookMeshCollision(
+            collisionDataPath,
+            CollisionDataType.TriangleMesh,
+            collisionModel);
+
+        if (failed)
+        {
+            Debug.LogError(
+                $"Collision cook failed : {collisionSourceFilename}");
+            return;
+        }
+
+        CollisionData collisionData =
+            Content.LoadAsync<CollisionData>(collisionDataPath);
+
+        collisionData.WaitForLoaded();
+
+        result.RegisterCollision(
+            mesh.Name,
+            collisionDataPath);
+    }
+
     private async Task GeneratePrefabsAsync(Scene scene,AssetImportResult result)
     {
         foreach (StaticMesh mesh in scene.StaticMeshes)
@@ -151,7 +309,27 @@ public class AssetImporter
             return;
 
         // string prefabPath = FlaxPaths.GetPrefabPath(result.SceneName, mesh.Name);
-        string prefabPath = FlaxPaths.GetUnrealPrefabPath(mesh.AssetPath);
+        string prefabPath;
+
+        switch (result.scene.From)
+        {
+            case "Unreal":
+                prefabPath = FlaxPaths.GetUnrealPrefabPath(mesh.AssetPath);
+                break;
+
+            case "Blender":
+                prefabPath = FlaxPaths.GetPrefabPath(
+                    result.scene.From,
+                    result.scene.SceneName,
+                    mesh.Name);
+                break;
+
+            default:
+                Debug.LogWarning(
+                    $"Unknown scene source '{result.scene.From}'. " +
+                    "Unable to determine prefab path.");
+                return;
+        }
 
         Prefab ExistingPfb = Content.Load<Prefab>(prefabPath);
         if (ExistingPfb == null)
@@ -189,12 +367,12 @@ public class AssetImporter
     {
         foreach (MaterialSlot slot in scene.Materials)
         {
-            string flaxPath = await _materialGenerator.GenerateAsync(slot);
+            string flaxPath = await _materialGenerator.GenerateAsync(slot, result);
             result.RegisterMaterial(slot.AssetPath, flaxPath);
         }
     }
 
-    private async Task ApplyDefaultMaterialsAsync(StaticMesh mesh,string modelPath,Scene scene)
+    private async Task ApplyDefaultMaterialsAsync(StaticMesh mesh,string modelPath,Scene scene, AssetImportResult result)
     {
         Model model = Content.Load<Model>(modelPath);
 
@@ -215,7 +393,7 @@ public class AssetImporter
         {
             MaterialSlot slot = materials[i];
 
-            string materialPath = await _materialGenerator.GenerateAsync(slot);
+            string materialPath = await _materialGenerator.GenerateAsync(slot, result);
 
             MaterialBase material = Content.Load<MaterialBase>(materialPath);
 
@@ -254,12 +432,12 @@ public class AssetImporter
 
         List<MaterialSlot> materials = new();
 
-        if (instance.Value.Materials == null)
+        if (instance.Materials == null)
         {
             return materials;
         }
 
-        foreach (int materialIndex in instance.Value.Materials)
+        foreach (int materialIndex in instance.Materials)
         {
             if (materialIndex < 0 || materialIndex >= scene.Materials.Count)
             {

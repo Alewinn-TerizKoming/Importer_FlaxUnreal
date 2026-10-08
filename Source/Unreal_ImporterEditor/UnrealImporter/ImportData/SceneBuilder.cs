@@ -9,8 +9,28 @@ namespace Unreal_ImporterEditor;
 
 public class SceneBuilder
 {
+    private GaneshImporterConfig _settings;
+
+    private GaneshImporterConfig LoadSettings()
+    {
+
+        string settingsPath = Path.Combine(Globals.ProjectContentFolder,
+                "Settings", "PX_Editor",
+                typeof(GaneshImporterConfig).Name + ".json");
+
+        if (!File.Exists(settingsPath))
+        {
+            FlaxEditor.Editor.SaveJsonAsset(settingsPath, Activator.CreateInstance(typeof(GaneshImporterConfig)));
+        }
+
+        return Content.Load<JsonAsset>(settingsPath).GetInstance<GaneshImporterConfig>();
+    }
+
     public async Task Build(AssetImportResult assets)
     {
+
+        _settings = LoadSettings();
+         
         Dictionary<string, EmptyActor> folders = new();
 
         Level.UnloadAllScenes();
@@ -32,7 +52,19 @@ public class SceneBuilder
             StaticMesh mesh = assets.scene.StaticMeshes[instance.Mesh];
             Actor actor;
 
-            if (assets.HasPrefab(mesh.Name))
+            if (!string.IsNullOrEmpty(instance.AsPrefab))
+            {
+                if (!_settings.AsPrefabList.TryGetValue(instance.AsPrefab, out Prefab prefab))
+                {
+                    Debug.LogError(
+                        $"[Ganesh] AsPrefab '{instance.AsPrefab}' not found in AsPrefabList.");
+
+                    continue;
+                }
+
+                actor = PrefabManager.SpawnPrefab(prefab);
+            }
+            else if(assets.HasGeneratedPrefab(mesh.Name))
             {
 
                 Prefab prefab = Content.Load<Prefab>(assets.GetPrefab(mesh.Name));
@@ -66,25 +98,32 @@ public class SceneBuilder
             SetActorParent(actor, instance, scene, folders);
             actor.Name = instance.Name;
 
-            ApplyTransform(actor, instance.Location, instance.Rotation, instance.Scale);
+            switch (assets.scene.From)
+            {
+                case "Unreal":
+                    ApplyUnrealTransform(actor, instance.Location, instance.Rotation, instance.Scale);
+                    break;
 
+                case "Blender":
+                    ApplyBlenderTransform(actor, instance.Location, instance.Rotation, instance.Scale);
+                    break;
+
+                default:
+                    ApplyDefaultTransform(actor, instance.Location, instance.Rotation, instance.Scale); ;
+                    break;
+            }
+
+            
             // TODO:
             // Unreal "Unlit" materials currently import as standard Flax materials.
             // This causes SkySphere materials to cast shadows.
             // Investigate a proper mapping between Unreal Unlit and Flax material/shadow settings.
-            ApplyProperties(actor, instance.Properties);
+
+            if(instance.Properties != null)
+                ApplyProperties(actor, instance.Properties);
+
             ApplyMaterials(actor, instance, assets);
         }
-
-
-        DirectionalLight light = scene.AddChild<DirectionalLight>();
-        light.EulerAngles = new Float3(65, -100, 0);
-
-        SkyLight sklght = scene.AddChild<SkyLight>();
-        sklght.AdditiveColor = new Color([0.25f, 0.25f, 0.25f, 1]);
-
-        scene.AddChild<Sky>();
-
 
         byte[] bytes = Level.SaveSceneToBytes(scene);
 
@@ -107,7 +146,7 @@ public class SceneBuilder
         Editor.Instance.ContentDatabase.Rebuild(true);
     }
 
-    private void ApplyTransform(Actor actor, Vector3 unrealPosition, Rotation unrealEuler, Vector3 unrealScale)
+    private void ApplyUnrealTransform(Actor actor, Vector3 unrealPosition, Rotation unrealEuler, Vector3 unrealScale)
     {
         actor.ResetLocalTransform();
 
@@ -119,15 +158,43 @@ public class SceneBuilder
 
         Rotation FlaxRotation = new Rotation();
         FlaxRotation.Pitch = -unrealEuler.Pitch;
-        FlaxRotation.Roll = unrealEuler.Yaw; 
-        FlaxRotation.Yaw = -unrealEuler.Roll; 
+        FlaxRotation.Roll = unrealEuler.Yaw;
+        FlaxRotation.Yaw = -unrealEuler.Roll;
 
-        actor.Orientation =  Quaternion.Euler(FlaxRotation.Pitch,FlaxRotation.Roll,FlaxRotation.Yaw);
+        actor.Orientation = Quaternion.Euler(FlaxRotation.Pitch, FlaxRotation.Roll, FlaxRotation.Yaw);
 
         actor.LocalScale = new FlaxEngine.Vector3(
                 unrealScale.Y,
                 unrealScale.Z,
                 unrealScale.X);
+    }
+
+    private void ApplyBlenderTransform(Actor actor, Vector3 BlenderPosition, Rotation Blenderrotation, Vector3 BlenderScale)
+    {
+        actor.ResetLocalTransform();
+
+        actor.LocalPosition = new FlaxEngine.Vector3(
+            - BlenderPosition.Y,
+            BlenderPosition.Z,
+            BlenderPosition.X
+        ) * 100;
+
+        Rotation FlaxRotation = new Rotation();
+        FlaxRotation.Pitch = Blenderrotation.Roll;
+        FlaxRotation.Yaw = - Blenderrotation.Yaw;
+        FlaxRotation.Roll = -Blenderrotation.Pitch;
+
+        actor.Orientation = Quaternion.Euler(FlaxRotation.Pitch, FlaxRotation.Yaw, FlaxRotation.Roll);
+
+        actor.LocalScale = new FlaxEngine.Vector3(
+                BlenderScale.Y,
+                BlenderScale.Z,
+                BlenderScale.X);
+    }
+
+    private void ApplyDefaultTransform(Actor actor, Vector3 location, Rotation rotation, Vector3 scale)
+    {
+        Debug.LogError($"[Scenebuilder] - Unknown scene source - defaulting to no transform");
     }
 
     private void ApplyProperties(Actor actor, ActorProperties properties)
@@ -232,6 +299,11 @@ public class SceneBuilder
             }
 
             MaterialSlot slot = assets.scene.Materials[materialIndex];
+
+            if (slot.SceneOverride)
+            {
+                continue;
+            }
 
             string materialPath = assets.GetMaterial(slot.AssetPath);
             MaterialBase material = Content.Load<MaterialBase>(materialPath);

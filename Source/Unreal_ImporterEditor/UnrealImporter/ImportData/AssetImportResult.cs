@@ -55,7 +55,7 @@ public class AssetImportResult
         _prefabAssets[meshName] = prefabPath;
     }
 
-    public bool HasPrefab(string meshName)
+    public bool HasGeneratedPrefab(string meshName)
     {
         return _prefabAssets.ContainsKey(meshName);
     }

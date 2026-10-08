@@ -13,21 +13,21 @@ public enum LightType
     Sky,
 }
 
-public struct Vector3
+public class Vector3
 {
     public float X;
     public float Y;
     public float Z;
 }
 
-public struct Rotation
+public class Rotation
 {
     public float Pitch;
     public float Yaw;
     public float Roll;
 }
 
-public struct ActorProperties
+public class ActorProperties
 {
     public bool Visibility;
     public bool HiddenInGame;
@@ -37,7 +37,7 @@ public struct ActorProperties
     public string Layer;
 }
 
-public struct LightSettings
+public class LightSettings
 {
     public string Color;
     public float Brightness;
@@ -46,7 +46,7 @@ public struct LightSettings
     public float IndirectLightingIntensity;
 }
 
-public struct ShadowSettings
+public class ShadowSettings
 {
     public string Mode;
     public string PartitionMode;
@@ -62,13 +62,13 @@ public struct ShadowSettings
     public float Resolution;
 }
 
-public struct VolumetricFogSettings
+public class VolumetricFogSettings
 {
     public float ScatteringIntensity;
     public bool CastShadow;
 }
 
-public struct LocalLightSettings
+public class LocalLightSettings
 {
     public float Radius;
     public float SourceRadius;
@@ -77,13 +77,13 @@ public struct LocalLightSettings
     public float FallOffExponent;
 }
 
-public struct SpotLightSettings
+public class SpotLightSettings
 {
     public float InnerConeAngle;
     public float OuterConeAngle;
 }
 
-public struct SkyLightSettings
+public class SkyLightSettings
 {
     public string AdditiveColor;
     public string Mode;
@@ -91,14 +91,14 @@ public struct SkyLightSettings
     public string CustomTexture;
 }
 
-public struct IESSettings
+public class IESSettings
 {
     public string Texture;
     public bool UseBrightness;
     public float BrightnessScale;
 }
 
-public struct Light
+public class Light
 {
     public string Name;
     public string Folder;
@@ -116,7 +116,7 @@ public struct Light
     public IESSettings IES;
 }
 
-public struct StaticMesh
+public class StaticMesh
 {
     public string AssetPath;
     public string Name;
@@ -126,19 +126,20 @@ public struct StaticMesh
     }
 }
 
-public struct MaterialSlot
+public class MaterialSlot
 {
     public string AssetPath;
     public string Name;
     public string ParentMaterial;
     public string Color;
+    public bool SceneOverride;
     public override bool Equals(object? obj)
     {
         return false;
     }
 }
 
-public struct MeshInstance
+public class MeshInstance
 {
     public string Name;
     public string Folder;
@@ -148,11 +149,13 @@ public struct MeshInstance
     public Vector3 Scale;
     public ActorProperties Properties;
     public List<int> Materials;
+    public string AsPrefab;
 }
 
-public struct Scene
+public class Scene
 {
     public string SceneName;
+    public string From;
     public List<StaticMesh> StaticMeshes;
     public List<MeshInstance> MeshInstances;
     public List<Light> Lights;

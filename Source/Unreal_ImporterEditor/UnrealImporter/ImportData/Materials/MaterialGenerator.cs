@@ -8,19 +8,44 @@ using Unreal_ImporterEditor;
 
 public class MaterialGenerator
 {
-    public async Task<string> GenerateAsync(Unreal_ImporterEditor.MaterialSlot slot)
+public async Task<string> GenerateAsync(
+    Unreal_ImporterEditor.MaterialSlot slot,
+    AssetImportResult result)
+{
+    string path;
+
+    switch (result.scene.From)
     {
-        string path = FlaxPaths.GetUnrealAssetPath(slot.AssetPath, ".flax");
+        case "Unreal":
+            path = FlaxPaths.GetUnrealAssetPath(
+                slot.AssetPath,
+                ".flax");
+            break;
 
-        if (File.Exists(path))
-            return path;
+        case "Blender":
+            path = FlaxPaths.GetMaterialPath(
+                result.scene.From,
+                result.scene.SceneName,
+                slot.Name);
+            break;
 
-        await CreateAssetAsync(slot, path);
-
-        return path;
+        default:
+            throw new Exception(
+                $"Unknown scene source '{result.scene.From}'.");
     }
 
-    private async Task CreateAssetAsync(Unreal_ImporterEditor.MaterialSlot slot, string path)
+    if (File.Exists(path))
+        return path;
+
+        await CreateAssetAsync(
+            slot,
+            path,
+            result);
+
+    return path;
+}
+
+    private async Task CreateAssetAsync(Unreal_ImporterEditor.MaterialSlot slot, string path, AssetImportResult result)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
 
@@ -30,7 +55,11 @@ public class MaterialGenerator
         }
         else
         {
-            await CreateMaterialInstance(slot, path, slot.Color);
+            await CreateMaterialInstance(
+                        slot,
+                        path,
+                        slot.Color,
+                        result);
         }
 
         await Task.Delay(100);
@@ -49,24 +78,63 @@ public class MaterialGenerator
             throw new Exception($"Unable to create material {path}");
     }
 
-    private async Task CreateMaterialInstance(Unreal_ImporterEditor.MaterialSlot slot,string path, string color)
+    private async Task CreateMaterialInstance(
+        Unreal_ImporterEditor.MaterialSlot slot,
+        string path,
+        string color,
+        AssetImportResult result)
     {
-        bool failed = Editor.CreateAsset("MaterialInstance",path);
+        bool failed =
+            Editor.CreateAsset(
+                "MaterialInstance",
+                path);
 
-        if (failed) throw new Exception($"Unable to create material instance {path}");
+        if (failed)
+            throw new Exception(
+                $"Unable to create material instance {path}");
 
-        string parentPath = FlaxPaths.GetUnrealAssetPath(slot.ParentMaterial,".flax");
+        string parentPath;
 
-        MaterialInstance instance = Content.Load<MaterialInstance>(path);
+        switch (result.scene.From)
+        {
+            case "Unreal":
+                parentPath =
+                    FlaxPaths.GetUnrealAssetPath(
+                        slot.ParentMaterial,
+                        ".flax");
+                break;
+
+            case "Blender":
+                parentPath =
+                    FlaxPaths.GetMaterialPath(
+                        result.scene.From,
+                        result.scene.SceneName,
+                        slot.ParentMaterial);
+                break;
+
+            default:
+                throw new Exception(
+                    $"Unknown scene source '{result.scene.From}'.");
+        }
+
+        MaterialInstance instance =
+            Content.Load<MaterialInstance>(path);
+
         instance.WaitForLoaded();
 
-        MaterialBase parent = Content.Load<MaterialBase>(parentPath);
+        MaterialBase parent =
+            Content.Load<MaterialBase>(parentPath);
+
         parent.WaitForLoaded();
 
         instance.BaseMaterial = parent;
-        instance.SetParameterValue("BaseColor", ParseColor(color));
+        instance.SetParameterValue(
+            "BaseColor",
+            ParseColor(color));
 
         instance.Save();
+
+        await Task.CompletedTask;
     }
 
     private Color ParseColor(string hex)
